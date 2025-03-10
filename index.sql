@@ -285,6 +285,19 @@ BEGIN
 END;
 GO
 
+-- TEST
+BEGIN TRY
+    INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
+    VALUES (1003, 2003, '2025-03-01', NULL);
+    PRINT 'Test FAILED: Duplicate active borrow record was inserted unexpectedly.';
+END TRY
+BEGIN CATCH
+    PRINT 'Test PASSED: Duplicate active borrow record insertion prevented.';
+    PRINT ERROR_MESSAGE();
+END CATCH;
+GO
+
+
 
 -- 2. Ensure Edition Price Is Greater Than Zero
 -- This trigger verifies that any inserted or updated edition has a positive price.
@@ -304,6 +317,21 @@ BEGIN
     END
 END;
 GO
+
+--Test
+PRINT '--- Test Edition Price > 0 ---';
+BEGIN TRY
+    INSERT INTO Edition (book_id, edition_number, edition_year, paper_size, number_of_pages, publisher, price, with_cd)
+    VALUES (1001, 2, 1950, 'A5', 320, 'Test Publisher', -5.00, 0);
+    PRINT 'Test FAILED: Edition record with non-positive price was inserted unexpectedly.';
+END TRY
+BEGIN CATCH
+    PRINT 'Test PASSED: Edition record insertion prevented due to non-positive price.';
+    PRINT ERROR_MESSAGE();
+END CATCH;
+GO
+
+
 
 -- 3. Validate Borrow Dates
 -- This trigger ensures that the return date (if provided) is not earlier than the borrowing date in the Borrow table.
@@ -328,6 +356,22 @@ BEGIN
 END;
 GO
 
+-- Test
+PRINT '--- Test Borrow Dates (return date earlier than borrowing date) ---';
+
+BEGIN TRY
+    INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
+    VALUES (1002, 2002, '2025-03-10', '2025-03-05');
+    PRINT 'Test FAILED: Borrow record with invalid dates was inserted unexpectedly.';
+END TRY
+BEGIN CATCH
+    PRINT 'Test PASSED: Borrow record with invalid dates was prevented.';
+    PRINT ERROR_MESSAGE();
+END CATCH;
+GO
+
+
+
 -- 4. Prevent delete not returned book on Borrow
 -- Prevent deletion if an active borrow record (date_of_return IS NULL) is being remove.
 CREATE TRIGGER trg_CheckBeforeDelete
@@ -348,6 +392,24 @@ BEGIN
     END
 END;
 GO
+
+-- Test
+PRINT '--- Test Prevent Deletion of Active Borrow Record ---';
+
+BEGIN TRY
+    DELETE FROM Borrow
+    WHERE book_id = 1003 
+      AND card_number = 2003 
+      AND date_of_borrowing = '2025-02-07';
+    PRINT 'Test FAILED: Active borrow record was deleted unexpectedly.';
+END TRY
+BEGIN CATCH
+    PRINT 'Test PASSED: Deletion of active borrow record prevented.';
+    PRINT ERROR_MESSAGE();
+END CATCH;
+GO
+
+
 
 ----------------------------------------------------------------------------------------------------
 --                                            STORE PROCEDURE                                     --
@@ -387,4 +449,3 @@ BEGIN
     END CATCH
 END;
 GO
-
