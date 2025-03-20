@@ -8,18 +8,19 @@ DROP TABLE IF EXISTS Book;
 DROP TABLE IF EXISTS Author;
 DROP TABLE IF EXISTS BookType;
 DROP TABLE IF EXISTS Reader;
+DROP TABLE IF EXISTS BorrowAudit;
 
 -- 1. BookType Table
 --    Stores different book types (historical, political, economic, etc.)
 CREATE TABLE BookType (
-    type_code INT PRIMARY KEY,    
+    type_code INT IDENTITY(1,1) PRIMARY KEY,    
     type_name VARCHAR(100) NOT NULL
 );
 
 -- 2. Author Table
 --    Stores information about authors
 CREATE TABLE Author (
-    author_code INT PRIMARY KEY,     
+    author_code VARCHAR(6) CHECK(author_code LIKE 'AT%') PRIMARY KEY,     
     author_name VARCHAR(200) NOT NULL,
     year_of_birth INT                 
 );
@@ -27,7 +28,7 @@ CREATE TABLE Author (
 -- 3. Book Table
 --    Stores general information about each book
 CREATE TABLE Book (
-    book_id INT PRIMARY KEY,          -- Could be IDENTITY
+    book_id VARCHAR(6) CHECK(book_id LIKE 'BK%') PRIMARY KEY,          -- Could be IDENTITY
     type_code INT NOT NULL,           -- FK referencing BookType
     title NVARCHAR(300) NOT NULL,
 
@@ -37,8 +38,8 @@ CREATE TABLE Book (
 );
 
 CREATE TABLE BookAuthor (
-    book_id INT NOT NULL,
-    author_code INT NOT NULL,
+     book_id VARCHAR(6) CHECK(book_id LIKE 'BK%') NOT NULL,
+	 author_code VARCHAR(6) CHECK(author_code LIKE 'AT%')  NOT NULL,
 
     CONSTRAINT PK_BookAuthor
         PRIMARY KEY (book_id, author_code),
@@ -55,13 +56,13 @@ CREATE TABLE BookAuthor (
 -- 5. Edition Table
 --    Each book can have multiple editions (1st, 2nd, 3rd, ...)
 CREATE TABLE Edition (
-    book_id INT NOT NULL,
-    edition_number INT NOT NULL,      
-    edition_year INT NOT NULL,       
+    book_id VARCHAR(6) CHECK(book_id LIKE 'BK%') NOT NULL,
+    edition_number INT NOT NULL CHECK(edition_number > 0),      
+    edition_year INT NOT NULL CHECK(edition_year > 0),       
     paper_size VARCHAR(50),           
-    number_of_pages INT,
+    number_of_pages INT CHECK(number_of_pages > 0),
     publisher VARCHAR(200),
-    price DECIMAL(10,2),
+    price DECIMAL(10,2) CHECK(price > 0),
     with_cd BIT,                      -- 1 = with CD, 0 = without CD
 
     -- Composite primary key:
@@ -77,7 +78,7 @@ CREATE TABLE Edition (
 --    Stores information about each library reader
 
 CREATE TABLE Reader (
-    card_number INT PRIMARY KEY,      
+    card_number VARCHAR(6) CHECK(card_number like 'R%') PRIMARY KEY,      
     date_of_issue DATE,
     reader_name NVARCHAR(200),
     occupation VARCHAR(100),
@@ -89,8 +90,8 @@ CREATE TABLE Reader (
 --   Also stores date of borrowing and date of return
 
 CREATE TABLE Borrow (
-    book_id INT NOT NULL,
-    card_number INT NOT NULL,
+    book_id VARCHAR(6) CHECK(book_id LIKE 'BK%') NOT NULL,
+    card_number VARCHAR(6) CHECK(card_number like 'R%') NOT NULL,
     date_of_borrowing DATE NOT NULL,
     date_of_return DATE NULL,
 
@@ -112,863 +113,179 @@ CREATE TABLE Borrow (
 --                                          Insert Value                                        --
 ----------------------------------------------------------------------------------------------------
 
--- Insert data into BookType
-INSERT INTO BookType (type_code, type_name)
-VALUES 
-    (1, 'Historical'),
-    (2, 'Political'),
-    (3, 'Economic'),
-    (4, 'Literary'),
-    (5, 'Technical');
-GO
+INSERT INTO BookType (type_name)
+VALUES
+    ('Historical'),
+    ('Political'),
+    ('Economic'),
+    ('Fiction'),
+    ('Science');
 
--- Insert data into Author
+
 INSERT INTO Author (author_code, author_name, year_of_birth)
-VALUES 
-    (101, 'George Orwell', 1903),
-    (102, 'Jane Austen', 1775),
-    (103, 'Karl Marx', 1818),
-    (104, 'William Shakespeare', 1564),
-    (105, 'Isaac Newton', 1643);
-GO
+VALUES
+    ('AT0001', 'Author One', 1940),
+    ('AT0002', 'Author Two', 1950),
+    ('AT0003', 'Author Three', 1960),
+    ('AT0004', 'Author Four', 1970),
+    ('AT0005', 'Author Five', 1980);
 
--- Insert data into Book
+
 INSERT INTO Book (book_id, type_code, title)
-VALUES 
-    (1001, 4, '1984'),
-    (1002, 4, 'Pride and Prejudice'),
-    (1003, 2, 'The Communist Manifesto'),
-    (1004, 4, 'Hamlet'),
-    (1005, 5, 'Principia Mathematica'),
-	(1006, 4, 'Romeo and Juliet');
-GO
+VALUES
+    ('BK0001', 1, 'The Dawn of History'),
+    ('BK0002', 2, 'Political Paradigms'),
+    ('BK0003', 3, 'Economic Essentials'),
+    ('BK0004', 4, 'Fictional Realms'),
+    ('BK0005', 5, 'Scientific Discoveries'),
+    ('BK0006', 1, 'Ancient Civilizations'),
+    ('BK0007', 2, 'Modern Governance'),
+    ('BK0008', 3, 'Market Forces'),
+    ('BK0009', 4, 'Fantasy Worlds'),
+    ('BK0010', 5, 'Innovations in Science');
 
--- Insert data into BookAuthor (Many-to-Many)
-INSERT INTO BookAuthor (book_id, author_code)
-VALUES 
-    (1001, 101), -- 1984 by George Orwell
-    (1002, 102), -- Pride and Prejudice by Jane Austen
-    (1003, 103), -- The Communist Manifesto by Karl Marx
-    (1004, 104), -- Hamlet by William Shakespeare
-    (1005, 105), -- Principia Mathematica by Isaac Newton
-	(1006, 104); -- Romeo and Juliet by William Shakespeare
-GO
 
--- Insert data into Edition
-INSERT INTO Edition (book_id, edition_number, edition_year, paper_size, number_of_pages, publisher, price, with_cd)
-VALUES 
-    (1001, 1, 1949, 'A5', 328, 'Secker & Warburg', 15.99, 0),
-    (1002, 1, 1813, 'B5', 432, 'T. Egerton', 12.50, 0),
-    (1003, 1, 1848, 'A4', 56, 'Penguin Classics', 8.99, 0),
-    (1004, 1, 1603, 'B5', 200, 'Globe Theatre', 18.00, 0),
-    (1005, 1, 1687, 'A4', 512, 'Cambridge University Press', 25.00, 1),
-	(1006, 1, 1597, 'B5', 280, 'First Folio', 19.99, 0),
-    (1006, 2, 1601, 'B5', 285, 'First Folio Revised', 20.99, 0);
-GO
--- Insert data into Reader
 INSERT INTO Reader (card_number, date_of_issue, reader_name, occupation, gender)
-VALUES 
-    (2001, '2024-01-15', N'Nguyễn Văn A', 'Student', 'M'),
-    (2002, '2024-02-20', N'Trần Văn B', 'Engineer', 'M'),
-    (2003, '2024-03-10', N'Lê Thị C', 'Teacher', 'F'),
-    (2004, '2024-04-05', N'Hoàng Văn D', 'Doctor', 'M'),
-    (2005, '2024-05-22', N'Nguyễn Ngọc E', 'Librarian', 'F');
-GO
+VALUES
+    ('R0001', '2025-03-15', 'Reader One', 'Student', 'F'),
+    ('R0002', '2025-03-16', 'Reader Two', 'Teacher', 'M'),
+    ('R0003', '2025-03-17', 'Reader Three', 'Engineer', 'M'),
+    ('R0004', '2025-03-18', 'Reader Four', 'Doctor', 'F'),
+    ('R0005', '2025-03-19', 'Reader Five', 'Artist', 'F');
 
--- Insert data into Borrow (Books borrowed by readers)
+
+INSERT INTO BookAuthor (book_id, author_code)
+VALUES
+    ('BK0001', 'AT0001'),
+    ('BK0002', 'AT0002'),
+    ('BK0003', 'AT0003'),
+    ('BK0004', 'AT0004'),
+    ('BK0005', 'AT0005'),
+    ('BK0006', 'AT0001'),
+    ('BK0007', 'AT0002'),
+    ('BK0008', 'AT0003'),
+    ('BK0009', 'AT0004'),
+    ('BK0010', 'AT0005');
+
+INSERT INTO Edition (book_id, edition_number, edition_year, paper_size, number_of_pages, publisher, price, with_cd)
+VALUES
+    ('BK0001', 1, 2000, 'A4', 250, 'History Press', 19.99, 0),
+    ('BK0002', 1, 2005, 'A4', 300, 'Politics House', 24.99, 0),
+    ('BK0003', 1, 2010, 'A4', 320, 'Econ Publishers', 29.99, 1),
+    ('BK0004', 1, 2015, 'Letter', 280, 'Fiction Works', 22.99, 0),
+    ('BK0005', 1, 2020, 'A4', 350, 'Science Hub', 34.99, 1),
+    ('BK0006', 1, 2001, 'A4', 260, 'History Press', 20.99, 0),
+    ('BK0007', 1, 2006, 'A4', 310, 'Politics House', 25.99, 0),
+    ('BK0008', 1, 2011, 'A4', 330, 'Econ Publishers', 30.99, 1),
+    ('BK0009', 1, 2016, 'Letter', 290, 'Fiction Works', 23.99, 0),
+    ('BK0010', 1, 2021, 'A4', 360, 'Science Hub', 35.99, 1);
+
+
 INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
 VALUES 
-    (1001, 2001, '2025-02-01', '2025-02-15'),  
-    (1002, 2002, '2025-02-05', '2025-02-20'), 
-    (1003, 2003, '2025-02-07', NULL),          
-    (1004, 2004, '2025-02-10', '2025-02-25'),  
-    (1005, 2005, '2025-02-15', NULL);          
+    ('BK0001', 'R0001', '2025-03-20', NULL),
+    ('BK0002', 'R0002', '2025-03-21', '2025-03-28'),
+    ('BK0003', 'R0003', '2025-03-22', '2025-03-29'),
+    ('BK0004', 'R0004', '2025-03-23', NULL),
+    ('BK0005', 'R0005', '2025-03-24', '2025-03-30');
+
+
+----------------------------------------------------------------------------------------------------
+--                                          SQL STATEMENTS                                       --
+----------------------------------------------------------------------------------------------------
+
+-- List All Books with Their Book Type
+SELECT b.book_id,
+       b.title,
+       bt.type_name
+FROM Book b
+JOIN BookType bt ON b.type_code = bt.type_code;
+
+-- List All Authors and the Books They Authored
+SELECT a.author_name,
+       b.title
+FROM Author a
+JOIN BookAuthor ba ON a.author_code = ba.author_code
+JOIN Book b ON ba.book_id = b.book_id;
+
+
+-- Display Borrow Records with Reader Names and Book Titles
+SELECT r.reader_name,
+       b.title,
+       br.date_of_borrowing,
+       br.date_of_return
+FROM Borrow br
+JOIN Reader r ON br.card_number = r.card_number
+JOIN Book b ON br.book_id = b.book_id;
+
+-- Show All Editions for a Specific Book
+SELECT *
+FROM Edition
+WHERE book_id = 'BK0001';
+
+-- Count the Number of Books Borrowed by Each Reader
+SELECT r.reader_name,
+       COUNT(br.book_id) AS total_borrowed
+FROM Borrow br
+JOIN Reader r ON br.card_number = r.card_number
+GROUP BY r.reader_name;
+
+
+----------------------------------------------------------------------------------------------------
+--                                          TRIGGER                                               --
+----------------------------------------------------------------------------------------------------
+
+CREATE TABLE BorrowAudit
+(
+    AuditID INT IDENTITY(1,1) PRIMARY KEY,
+    book_id VARCHAR(6),
+    card_number VARCHAR(6),
+    date_of_borrowing DATE,
+    date_of_return DATE,
+    ActionType VARCHAR(10),  -- 'INSERT', 'UPDATE' hoặc 'DELETE'
+    AuditDate DATETIME DEFAULT GETDATE()
+);
 GO
 
-
-----------------------------------------------------------------------------------------------------
---                                          SQL STATEMENTS                                        --
-----------------------------------------------------------------------------------------------------
-
--- 1. List All Books with Their Types and Authors
-SELECT 
-    b.book_id,
-    b.title,
-    bt.type_name,
-    a.author_name
-FROM Book AS b
-JOIN BookType AS bt
-    ON b.type_code = bt.type_code
-JOIN BookAuthor AS ba
-    ON b.book_id = ba.book_id
-JOIN Author AS a
-    ON ba.author_code = a.author_code
-ORDER BY b.book_id;
-
--- 2. List All Editions for a Specific Book (e.g., '1984')
-SELECT 
-    b.title,
-    e.edition_number,
-    e.edition_year,
-    e.paper_size,
-    e.number_of_pages,
-    e.publisher,
-    e.price,
-    CASE WHEN e.with_cd = 1 THEN 'Yes' ELSE 'No' END AS with_cd
-FROM Edition AS e
-JOIN Book AS b
-    ON e.book_id = b.book_id
-WHERE b.title = 'Romeo and Juliet';
-
--- 3. List Readers and the Books They Have Borrowed
-SELECT 
-    r.card_number,
-    r.reader_name,
-    b.title,
-    br.date_of_borrowing,
-    br.date_of_return
-FROM Borrow AS br
-JOIN Reader AS r
-    ON br.card_number = r.card_number
-JOIN Book AS b
-    ON br.book_id = b.book_id
-ORDER BY br.date_of_borrowing DESC;
-
--- 5. List the Number of Books per Book Type
-SELECT 
-    bt.type_name,
-    COUNT(b.book_id) AS number_of_books
-FROM BookType AS bt
-LEFT JOIN Book AS b
-    ON bt.type_code = b.type_code
-GROUP BY bt.type_name;
-
-
--- 6. List the book is not borrowed
-SELECT 
-	b.book_id,
-	b.type_code,
-	b.title
-FROM Book b 
-LEFT JOIN Borrow br
-	ON b.book_id = br.book_id
-WHERE br.card_number IS NULL
-
-----------------------------------------------------------------------------------------------------
---                                            TRIGGERS                                            --
-----------------------------------------------------------------------------------------------------
-
--- Prevent Duplicate Active Borrow Records
-GO
-CREATE TRIGGER trg_CheckDuplicateBorrow
+CREATE TRIGGER trg_AuditBorrow
 ON Borrow
-AFTER INSERT
+AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF EXISTS (
-        SELECT i.book_id, i.card_number
-        FROM Borrow b
-        INNER JOIN inserted i 
-            ON b.book_id = i.book_id 
-           AND b.card_number = i.card_number
-        WHERE b.date_of_return IS NULL
-        GROUP BY i.book_id, i.card_number
-        HAVING COUNT(*) > 1
-    )
-    BEGIN
-        RAISERROR('This book is already borrowed and not yet returned by the same reader.', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
-    END
+    -- Log new records inserted
+    INSERT INTO BorrowAudit (book_id, card_number, date_of_borrowing, date_of_return, ActionType)
+    SELECT book_id, card_number, date_of_borrowing, date_of_return, 'INSERT'
+    FROM inserted
+    WHERE NOT EXISTS (
+        SELECT 1 FROM deleted 
+        WHERE inserted.book_id = deleted.book_id 
+          AND inserted.card_number = deleted.card_number 
+          AND inserted.date_of_borrowing = deleted.date_of_borrowing
+    );
+
+    -- Log records deleted
+    INSERT INTO BorrowAudit (book_id, card_number, date_of_borrowing, date_of_return, ActionType)
+    SELECT book_id, card_number, date_of_borrowing, date_of_return, 'DELETE'
+    FROM deleted
+    WHERE NOT EXISTS (
+        SELECT 1 FROM inserted 
+        WHERE inserted.book_id = deleted.book_id 
+          AND inserted.card_number = deleted.card_number 
+          AND inserted.date_of_borrowing = deleted.date_of_borrowing
+    );
+
+    -- Log records updated (both inserted and deleted exist)
+    INSERT INTO BorrowAudit (book_id, card_number, date_of_borrowing, date_of_return, ActionType)
+    SELECT i.book_id, i.card_number, i.date_of_borrowing, i.date_of_return, 'UPDATE'
+    FROM inserted i
+    INNER JOIN deleted d ON i.book_id = d.book_id 
+                         AND i.card_number = d.card_number 
+                         AND i.date_of_borrowing = d.date_of_borrowing;
 END;
 GO
 
--- TEST
-BEGIN TRY
-    INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
-    VALUES (1003, 2003, '2025-03-01', NULL);
-    PRINT 'Test FAILED: Duplicate active borrow record was inserted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Duplicate active borrow record insertion prevented.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
 
 
 
--- 2. Ensure Edition Price Is Greater Than Zero
--- This trigger verifies that any inserted or updated edition has a positive price.
-GO
-CREATE TRIGGER trg_CheckEditionPrice
-ON Edition
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    IF EXISTS (SELECT 1 FROM inserted WHERE price <= 0)
-    BEGIN
-         RAISERROR('Edition price must be greater than zero.', 16, 1);
-         ROLLBACK TRANSACTION;
-         RETURN;
-    END
-END;
-GO
-
---Test
-PRINT '--- Test Edition Price > 0 ---';
-BEGIN TRY
-    INSERT INTO Edition (book_id, edition_number, edition_year, paper_size, number_of_pages, publisher, price, with_cd)
-    VALUES (1001, 2, 1950, 'A5', 320, 'Test Publisher', -5.00, 0);
-    PRINT 'Test FAILED: Edition record with non-positive price was inserted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Edition record insertion prevented due to non-positive price.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
-
-
-
--- 3. Validate Borrow Dates
--- This trigger ensures that the return date (if provided) is not earlier than the borrowing date in the Borrow table.
-CREATE TRIGGER trg_CheckBorrowDates
-ON Borrow
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    IF EXISTS (
-         SELECT 1
-         FROM inserted
-         WHERE date_of_return IS NOT NULL
-           AND date_of_return < date_of_borrowing
-    )
-    BEGIN
-         RAISERROR('Return date cannot be earlier than borrowing date.', 16, 1);
-         ROLLBACK TRANSACTION;
-         RETURN;
-    END
-END;
-GO
-
--- Test
-PRINT '--- Test Borrow Dates (return date earlier than borrowing date) ---';
-
-BEGIN TRY
-    INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
-    VALUES (1002, 2002, '2025-03-10', '2025-03-05');
-    PRINT 'Test FAILED: Borrow record with invalid dates was inserted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Borrow record with invalid dates was prevented.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
-
-
-
--- 4. Prevent delete not returned book on Borrow
--- Prevent deletion if an active borrow record (date_of_return IS NULL) is being remove.
-CREATE TRIGGER trg_CheckBeforeDelete
-ON Borrow
-AFTER DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    IF EXISTS (
-        SELECT 1 
-        FROM deleted
-        WHERE date_of_return IS NULL
-    )
-    BEGIN
-        RAISERROR('Cannot delete a book not returned.', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
-    END
-END;
-GO
-
--- Test
-PRINT '--- Test Prevent Deletion of Active Borrow Record ---';
-
-BEGIN TRY
-    DELETE FROM Borrow
-    WHERE book_id = 1003 
-      AND card_number = 2003 
-      AND date_of_borrowing = '2025-02-07';
-    PRINT 'Test FAILED: Active borrow record was deleted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Deletion of active borrow record prevented.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
-
-
-
-----------------------------------------------------------------------------------------------------
---                                            STORE PROCEDURE                                     --
-----------------------------------------------------------------------------------------------------
-use DB_ASSIGNMENT
-
--- Drop tables in order to avoid foreign key dependency issues:
-DROP TABLE IF EXISTS Borrow;
-DROP TABLE IF EXISTS Edition;
-DROP TABLE IF EXISTS BookAuthor;
-DROP TABLE IF EXISTS Book;
-DROP TABLE IF EXISTS Author;
-DROP TABLE IF EXISTS BookType;
-DROP TABLE IF EXISTS Reader;
-
--- 1. BookType Table
---    Stores different book types (historical, political, economic, etc.)
-CREATE TABLE BookType (
-    type_code INT PRIMARY KEY,    
-    type_name VARCHAR(100) NOT NULL
-);
-
--- 2. Author Table
---    Stores information about authors
-CREATE TABLE Author (
-    author_code INT PRIMARY KEY,     
-    author_name VARCHAR(200) NOT NULL,
-    year_of_birth INT                 
-);
-
--- 3. Book Table
---    Stores general information about each book
-CREATE TABLE Book (
-    book_id INT PRIMARY KEY,          -- Could be IDENTITY
-    type_code INT NOT NULL,           -- FK referencing BookType
-    title NVARCHAR(300) NOT NULL,
-
-    CONSTRAINT FK_Book_BookType 
-        FOREIGN KEY (type_code) 
-        REFERENCES BookType(type_code)
-);
-
-CREATE TABLE BookAuthor (
-    book_id INT NOT NULL,
-    author_code INT NOT NULL,
-
-    CONSTRAINT PK_BookAuthor
-        PRIMARY KEY (book_id, author_code),
-
-    CONSTRAINT FK_BookAuthor_Book
-        FOREIGN KEY (book_id) 
-        REFERENCES Book(book_id),
-
-    CONSTRAINT FK_BookAuthor_Author
-        FOREIGN KEY (author_code) 
-        REFERENCES Author(author_code)
-);
-
--- 5. Edition Table
---    Each book can have multiple editions (1st, 2nd, 3rd, ...)
-CREATE TABLE Edition (
-    book_id INT NOT NULL,
-    edition_number INT NOT NULL,      
-    edition_year INT NOT NULL,       
-    paper_size VARCHAR(50),           
-    number_of_pages INT,
-    publisher VARCHAR(200),
-    price DECIMAL(10,2),
-    with_cd BIT,                      -- 1 = with CD, 0 = without CD
-
-    -- Composite primary key:
-    CONSTRAINT PK_Edition
-        PRIMARY KEY (book_id, edition_number),
-
-    CONSTRAINT FK_Edition_Book
-        FOREIGN KEY (book_id) 
-        REFERENCES Book(book_id)
-);
-
--- 6. Reader Table
---    Stores information about each library reader
-
-CREATE TABLE Reader (
-    card_number INT PRIMARY KEY,      
-    date_of_issue DATE,
-    reader_name NVARCHAR(200),
-    occupation VARCHAR(100),
-    gender CHAR(1) CHECK (gender IN ('M', 'F'))                     
-);
-
--- 7. Borrow Table
---    Implements the many-to-many relationship between Readers and Books
---   Also stores date of borrowing and date of return
-
-CREATE TABLE Borrow (
-    book_id INT NOT NULL,
-    card_number INT NOT NULL,
-    date_of_borrowing DATE NOT NULL,
-    date_of_return DATE NULL,
-
-    CONSTRAINT PK_Borrow
-        PRIMARY KEY (book_id, card_number, date_of_borrowing),
-
-    CONSTRAINT FK_Borrow_Book
-        FOREIGN KEY (book_id) 
-        REFERENCES Book(book_id),
-
-    CONSTRAINT FK_Borrow_Reader
-        FOREIGN KEY (card_number) 
-        REFERENCES Reader(card_number)
-);
-
-
-
-----------------------------------------------------------------------------------------------------
---                                          Insert Value                                        --
-----------------------------------------------------------------------------------------------------
-
--- Insert data into BookType
-INSERT INTO BookType (type_code, type_name)
-VALUES 
-    (1, 'Historical'),
-    (2, 'Political'),
-    (3, 'Economic'),
-    (4, 'Literary'),
-    (5, 'Technical');
-GO
-
--- Insert data into Author
-INSERT INTO Author (author_code, author_name, year_of_birth)
-VALUES 
-    (101, 'George Orwell', 1903),
-    (102, 'Jane Austen', 1775),
-    (103, 'Karl Marx', 1818),
-    (104, 'William Shakespeare', 1564),
-    (105, 'Isaac Newton', 1643);
-GO
-
--- Insert data into Book
-INSERT INTO Book (book_id, type_code, title)
-VALUES 
-    (1001, 4, '1984'),
-    (1002, 4, 'Pride and Prejudice'),
-    (1003, 2, 'The Communist Manifesto'),
-    (1004, 4, 'Hamlet'),
-    (1005, 5, 'Principia Mathematica'),
-	(1006, 4, 'Romeo and Juliet');
-GO
-
--- Insert data into BookAuthor (Many-to-Many)
-INSERT INTO BookAuthor (book_id, author_code)
-VALUES 
-    (1001, 101), -- 1984 by George Orwell
-    (1002, 102), -- Pride and Prejudice by Jane Austen
-    (1003, 103), -- The Communist Manifesto by Karl Marx
-    (1004, 104), -- Hamlet by William Shakespeare
-    (1005, 105), -- Principia Mathematica by Isaac Newton
-	(1006, 104); -- Romeo and Juliet by William Shakespeare
-GO
-
--- Insert data into Edition
-INSERT INTO Edition (book_id, edition_number, edition_year, paper_size, number_of_pages, publisher, price, with_cd)
-VALUES 
-    (1001, 1, 1949, 'A5', 328, 'Secker & Warburg', 15.99, 0),
-    (1002, 1, 1813, 'B5', 432, 'T. Egerton', 12.50, 0),
-    (1003, 1, 1848, 'A4', 56, 'Penguin Classics', 8.99, 0),
-    (1004, 1, 1603, 'B5', 200, 'Globe Theatre', 18.00, 0),
-    (1005, 1, 1687, 'A4', 512, 'Cambridge University Press', 25.00, 1),
-	(1006, 1, 1597, 'B5', 280, 'First Folio', 19.99, 0),
-    (1006, 2, 1601, 'B5', 285, 'First Folio Revised', 20.99, 0);
-GO
--- Insert data into Reader
-INSERT INTO Reader (card_number, date_of_issue, reader_name, occupation, gender)
-VALUES 
-    (2001, '2024-01-15', N'Nguyễn Văn A', 'Student', 'M'),
-    (2002, '2024-02-20', N'Trần Văn B', 'Engineer', 'M'),
-    (2003, '2024-03-10', N'Lê Thị C', 'Teacher', 'F'),
-    (2004, '2024-04-05', N'Hoàng Văn D', 'Doctor', 'M'),
-    (2005, '2024-05-22', N'Nguyễn Ngọc E', 'Librarian', 'F');
-GO
-
--- Insert data into Borrow (Books borrowed by readers)
-INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
-VALUES 
-    (1001, 2001, '2025-02-01', '2025-02-15'),  
-    (1002, 2002, '2025-02-05', '2025-02-20'), 
-    (1003, 2003, '2025-02-07', NULL),          
-    (1004, 2004, '2025-02-10', '2025-02-25'),  
-    (1005, 2005, '2025-02-15', NULL);          
-GO
-
-
-----------------------------------------------------------------------------------------------------
---                                          SQL STATEMENTS                                        --
-----------------------------------------------------------------------------------------------------
-
--- 1. List All Books with Their Types and Authors
-SELECT 
-    b.book_id,
-    b.title,
-    bt.type_name,
-    a.author_name
-FROM Book AS b
-JOIN BookType AS bt
-    ON b.type_code = bt.type_code
-JOIN BookAuthor AS ba
-    ON b.book_id = ba.book_id
-JOIN Author AS a
-    ON ba.author_code = a.author_code
-ORDER BY b.book_id;
-
--- 2. List All Editions for a Specific Book (e.g., '1984')
-SELECT 
-    b.title,
-    e.edition_number,
-    e.edition_year,
-    e.paper_size,
-    e.number_of_pages,
-    e.publisher,
-    e.price,
-    CASE WHEN e.with_cd = 1 THEN 'Yes' ELSE 'No' END AS with_cd
-FROM Edition AS e
-JOIN Book AS b
-    ON e.book_id = b.book_id
-WHERE b.title = 'Romeo and Juliet';
-
--- 3. List Readers and the Books They Have Borrowed
-SELECT 
-    r.card_number,
-    r.reader_name,
-    b.title,
-    br.date_of_borrowing,
-    br.date_of_return
-FROM Borrow AS br
-JOIN Reader AS r
-    ON br.card_number = r.card_number
-JOIN Book AS b
-    ON br.book_id = b.book_id
-ORDER BY br.date_of_borrowing DESC;
-
--- 5. List the Number of Books per Book Type
-SELECT 
-    bt.type_name,
-    COUNT(b.book_id) AS number_of_books
-FROM BookType AS bt
-LEFT JOIN Book AS b
-    ON bt.type_code = b.type_code
-GROUP BY bt.type_name;
-
-
--- 6. List the book is not borrowed
-SELECT 
-	b.book_id,
-	b.type_code,
-	b.title
-FROM Book b 
-LEFT JOIN Borrow br
-	ON b.book_id = br.book_id
-WHERE br.card_number IS NULL
-
-----------------------------------------------------------------------------------------------------
---                                            TRIGGERS                                            --
-----------------------------------------------------------------------------------------------------
-
--- Prevent Duplicate Active Borrow Records
-GO
-CREATE TRIGGER trg_CheckDuplicateBorrow
-ON Borrow
-AFTER INSERT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (
-        SELECT i.book_id, i.card_number
-        FROM Borrow b
-        INNER JOIN inserted i 
-            ON b.book_id = i.book_id 
-           AND b.card_number = i.card_number
-        WHERE b.date_of_return IS NULL
-        GROUP BY i.book_id, i.card_number
-        HAVING COUNT(*) > 1
-    )
-    BEGIN
-        RAISERROR('This book is already borrowed and not yet returned by the same reader.', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
-    END
-END;
-GO
-
--- TEST
-BEGIN TRY
-    INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
-    VALUES (1003, 2003, '2025-03-01', NULL);
-    PRINT 'Test FAILED: Duplicate active borrow record was inserted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Duplicate active borrow record insertion prevented.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
-
-
-
--- 2. Ensure Edition Price Is Greater Than Zero
--- This trigger verifies that any inserted or updated edition has a positive price.
-GO
-CREATE TRIGGER trg_CheckEditionPrice
-ON Edition
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    IF EXISTS (SELECT 1 FROM inserted WHERE price <= 0)
-    BEGIN
-         RAISERROR('Edition price must be greater than zero.', 16, 1);
-         ROLLBACK TRANSACTION;
-         RETURN;
-    END
-END;
-GO
-
---Test
-PRINT '--- Test Edition Price > 0 ---';
-BEGIN TRY
-    INSERT INTO Edition (book_id, edition_number, edition_year, paper_size, number_of_pages, publisher, price, with_cd)
-    VALUES (1001, 2, 1950, 'A5', 320, 'Test Publisher', -5.00, 0);
-    PRINT 'Test FAILED: Edition record with non-positive price was inserted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Edition record insertion prevented due to non-positive price.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
-
-
-
--- 3. Validate Borrow Dates
--- This trigger ensures that the return date (if provided) is not earlier than the borrowing date in the Borrow table.
-CREATE TRIGGER trg_CheckBorrowDates
-ON Borrow
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    IF EXISTS (
-         SELECT 1
-         FROM inserted
-         WHERE date_of_return IS NOT NULL
-           AND date_of_return < date_of_borrowing
-    )
-    BEGIN
-         RAISERROR('Return date cannot be earlier than borrowing date.', 16, 1);
-         ROLLBACK TRANSACTION;
-         RETURN;
-    END
-END;
-GO
-
--- Test
-PRINT '--- Test Borrow Dates (return date earlier than borrowing date) ---';
-
-BEGIN TRY
-    INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
-    VALUES (1002, 2002, '2025-03-10', '2025-03-05');
-    PRINT 'Test FAILED: Borrow record with invalid dates was inserted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Borrow record with invalid dates was prevented.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
-
-
-
--- 4. Prevent delete not returned book on Borrow
--- Prevent deletion if an active borrow record (date_of_return IS NULL) is being remove.
-CREATE TRIGGER trg_CheckBeforeDelete
-ON Borrow
-AFTER DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    IF EXISTS (
-        SELECT 1 
-        FROM deleted
-        WHERE date_of_return IS NULL
-    )
-    BEGIN
-        RAISERROR('Cannot delete a book not returned.', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
-    END
-END;
-GO
-
--- Test
-PRINT '--- Test Prevent Deletion of Active Borrow Record ---';
-
-BEGIN TRY
-    DELETE FROM Borrow
-    WHERE book_id = 1003 
-      AND card_number = 2003 
-      AND date_of_borrowing = '2025-02-07';
-    PRINT 'Test FAILED: Active borrow record was deleted unexpectedly.';
-END TRY
-BEGIN CATCH
-    PRINT 'Test PASSED: Deletion of active borrow record prevented.';
-    PRINT ERROR_MESSAGE();
-END CATCH;
-GO
-
-
-
-----------------------------------------------------------------------------------------------------
---                                            STORE PROCEDURE                                     --
-----------------------------------------------------------------------------------------------------
-
-CREATE PROCEDURE proc_AddNewBook
-    @book_id INT,
-    @type_code INT,
-    @title NVARCHAR(300),
-    @author_code INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        BEGIN TRANSACTION;
-
-        -- Validate that the book type exists.
-        IF NOT EXISTS (SELECT 1 FROM BookType WHERE type_code = @type_code)
-        BEGIN
-            THROW 50001, 'Invalid book type.', 1;
-        END
-
-        -- Validate that the author exists.
-        IF NOT EXISTS (SELECT 1 FROM Author WHERE author_code = @author_code)
-        BEGIN
-            THROW 50002, 'Author does not exist.', 1;
-        END
-
-        -- Insert into Book table.
-        INSERT INTO Book (book_id, type_code, title)
-        VALUES (@book_id, @type_code, @title);
-
-        -- Insert into BookAuthor junction table.
-        INSERT INTO BookAuthor (book_id, author_code)
-        VALUES (@book_id, @author_code);
-
-        COMMIT TRANSACTION;
-        PRINT 'New book added successfully.';
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
-        PRINT 'Error in proc_AddNewBook: ' + ERROR_MESSAGE();
-        THROW;
-    END CATCH
-END;
-GO
--- Test
-EXEC proc_AddNewBook 1007, 1, 'A New History', 101;
-
-
-CREATE PROCEDURE proc_BorrowBook
-    @book_id INT,
-    @card_number INT,
-    @date_of_borrowing DATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        BEGIN TRANSACTION;
-
-        -- Verify that the book exists.
-        IF NOT EXISTS (SELECT 1 FROM Book WHERE book_id = @book_id)
-        BEGIN
-            THROW 50003, 'Book does not exist.', 1;
-        END
-
-        -- Verify that the reader exists.
-        IF NOT EXISTS (SELECT 1 FROM Reader WHERE card_number = @card_number)
-        BEGIN
-            THROW 50004, 'Reader does not exist.', 1;
-        END
-
-        -- Insert borrow record.
-        INSERT INTO Borrow (book_id, card_number, date_of_borrowing, date_of_return)
-        VALUES (@book_id, @card_number, @date_of_borrowing, NULL);
-
-        COMMIT TRANSACTION;
-        PRINT 'Borrow record added successfully.';
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
-        PRINT 'Error in proc_BorrowBook: ' + ERROR_MESSAGE();
-        THROW;
-    END CATCH
-END;
-GO
-
--- Test
-EXEC proc_BorrowBook 1001, 2001, '2025-04-01';
-GO
-
-CREATE PROCEDURE proc_ReturnBook
-    @book_id INT,
-    @card_number INT,
-    @date_of_borrowing DATE,
-    @return_date DATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        BEGIN TRANSACTION;
-
-        -- Ensure an active borrow record exists.
-        IF NOT EXISTS (
-            SELECT 1 FROM Borrow 
-            WHERE book_id = @book_id 
-              AND card_number = @card_number 
-              AND date_of_borrowing = @date_of_borrowing 
-              AND date_of_return IS NULL
-        )
-        BEGIN
-            THROW 50005, 'Active borrow record not found.', 1;
-        END
-
-        -- Validate that the return date is not earlier than the borrow date.
-        IF @return_date < @date_of_borrowing
-        BEGIN
-            THROW 50006, 'Return date cannot be earlier than borrowing date.', 1;
-        END
-
-        -- Update the borrow record with the return date.
-        UPDATE Borrow
-        SET date_of_return = @return_date
-        WHERE book_id = @book_id 
-          AND card_number = @card_number 
-          AND date_of_borrowing = @date_of_borrowing;
-
-        COMMIT TRANSACTION;
-        PRINT 'Book return processed successfully.';
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
-        PRINT 'Error in proc_ReturnBook: ' + ERROR_MESSAGE();
-        THROW;
-    END CATCH
-END;
-GO
-
--- Test
-EXEC proc_ReturnBook 1001, 2001, '2025-04-01', '2025-04-15';
