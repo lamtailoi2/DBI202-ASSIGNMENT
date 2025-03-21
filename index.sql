@@ -93,7 +93,7 @@ CREATE TABLE Borrow (
     book_id VARCHAR(6) CHECK(book_id LIKE 'BK%') NOT NULL,
     card_number VARCHAR(6) CHECK(card_number like 'R%') NOT NULL,
     date_of_borrowing DATE NOT NULL,
-    date_of_return DATE NULL,
+    date_of_return DATE NULL 
 
     CONSTRAINT PK_Borrow
         PRIMARY KEY (book_id, card_number, date_of_borrowing),
@@ -285,6 +285,108 @@ BEGIN
                          AND i.date_of_borrowing = d.date_of_borrowing;
 END;
 GO
+
+----------------------------------------------------------------------------------------------------
+--                                          TRIGGER                                               --
+----------------------------------------------------------------------------------------------------
+
+CREATE PROCEDURE sp_delete_book
+    @book_id VARCHAR(6)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+	IF NOT EXISTS (SELECT 1 FROM Book WHERE book_id = @book_id)
+    BEGIN
+        PRINT 'Book ID does not exist.';
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Delete records from the Borrow table related to the book
+        DELETE FROM Borrow
+        WHERE book_id = @book_id;
+
+        -- Delete records from the Edition table related to the book
+        DELETE FROM Edition
+        WHERE book_id = @book_id;
+
+        -- Delete records from the BookAuthor table related to the book
+        DELETE FROM BookAuthor
+        WHERE book_id = @book_id;
+
+        -- Delete the book record from the Book table
+        DELETE FROM Book
+        WHERE book_id = @book_id;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        -- Report error
+        DECLARE @ErrorMessage NVARCHAR(4000);
+        DECLARE @ErrorSeverity INT;
+        DECLARE @ErrorState INT;
+
+        SELECT 
+            @ErrorMessage = ERROR_MESSAGE(),
+            @ErrorSeverity = ERROR_SEVERITY(),
+            @ErrorState = ERROR_STATE();
+
+        RAISERROR (@ErrorMessage, @ErrorSeverity, @ErrorState);
+    END CATCH
+END;
+GO
+
+
+CREATE PROCEDURE sp_borrow_book
+    @book_id VARCHAR(6),
+    @card_number VARCHAR(6)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Check if the book exists
+    IF NOT EXISTS (SELECT 1 FROM Book WHERE book_id = @book_id)
+    BEGIN
+        PRINT 'Book ID does not exist.';
+        RETURN;
+    END
+
+    -- Check if the reader exists
+    IF NOT EXISTS (SELECT 1 FROM Reader WHERE card_number = @card_number)
+    BEGIN
+        PRINT 'Reader card number does not exist.';
+        RETURN;
+    END
+
+    -- Check if the user has already borrowed the book (regardless of the borrowing date)
+    IF EXISTS (SELECT 1 FROM Borrow WHERE book_id = @book_id AND card_number = @card_number)
+    BEGIN
+        PRINT 'User has already borrowed this book.';
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Insert a new borrowing record with the current date as the borrowing date
+        INSERT INTO Borrow (book_id, card_number, date_of_borrowing)
+        VALUES (@book_id, @card_number, GETDATE());
+
+        COMMIT TRANSACTION;
+        PRINT 'Book borrowed successfully.';
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        PRINT 'An error occurred while borrowing the book.';
+    END CATCH
+END;
 
 
 
