@@ -364,8 +364,8 @@ BEGIN
         RETURN;
     END
 
-    -- Check if the user has already borrowed the book (regardless of the borrowing date)
-    IF EXISTS (SELECT 1 FROM Borrow WHERE book_id = @book_id AND card_number = @card_number)
+    -- Check if the user has already borrowed the book
+    IF EXISTS (SELECT 1 FROM Borrow WHERE book_id = @book_id AND card_number = @card_number AND date_off_return IS NULL)
     BEGIN
         PRINT 'User has already borrowed this book.';
         RETURN;
