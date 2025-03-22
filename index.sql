@@ -3,7 +3,7 @@ use DB_ASSIGNMENT
 -- Drop tables in order to avoid foreign key dependency issues:
 DROP TABLE IF EXISTS Borrow;
 DROP TABLE IF EXISTS Edition;
-DROP TABLE IF EXISTS BookAuthor;
+DROP TABLE IF EXISTS Written;
 DROP TABLE IF EXISTS Book;
 DROP TABLE IF EXISTS Author;
 DROP TABLE IF EXISTS BookType;
@@ -37,18 +37,18 @@ CREATE TABLE Book (
         REFERENCES BookType(type_code)
 );
 
-CREATE TABLE BookAuthor (
+CREATE TABLE Written (
      book_id VARCHAR(6) CHECK(book_id LIKE 'BK%') NOT NULL,
 	 author_code VARCHAR(6) CHECK(author_code LIKE 'AT%')  NOT NULL,
 
-    CONSTRAINT PK_BookAuthor
+    CONSTRAINT PK_Written
         PRIMARY KEY (book_id, author_code),
 
-    CONSTRAINT FK_BookAuthor_Book
+    CONSTRAINT FK_Written_Book
         FOREIGN KEY (book_id) 
         REFERENCES Book(book_id),
 
-    CONSTRAINT FK_BookAuthor_Author
+    CONSTRAINT FK_Written_Author
         FOREIGN KEY (author_code) 
         REFERENCES Author(author_code)
 );
@@ -154,7 +154,7 @@ VALUES
     ('R0005', '2025-03-19', 'Reader Five', 'Artist', 'F');
 
 
-INSERT INTO BookAuthor (book_id, author_code)
+INSERT INTO Written (book_id, author_code)
 VALUES
     ('BK0001', 'AT0001'),
     ('BK0002', 'AT0002'),
@@ -205,8 +205,8 @@ JOIN BookType bt ON b.type_code = bt.type_code;
 SELECT a.author_name,
        b.title
 FROM Author a
-JOIN BookAuthor ba ON a.author_code = ba.author_code
-JOIN Book b ON ba.book_id = b.book_id;
+JOIN Written wr ON a.author_code = wr.author_code
+JOIN Book b ON wr.book_id = b.book_id;
 
 
 -- Display Borrow Records with Reader Names and Book Titles
@@ -313,8 +313,8 @@ BEGIN
         DELETE FROM Edition
         WHERE book_id = @book_id;
 
-        -- Delete records from the BookAuthor table related to the book
-        DELETE FROM BookAuthor
+        -- Delete records from the Written table related to the book
+        DELETE FROM Written
         WHERE book_id = @book_id;
 
         -- Delete the book record from the Book table
@@ -387,7 +387,6 @@ BEGIN
         PRINT 'An error occurred while borrowing the book.';
     END CATCH
 END;
-
 
 
 
